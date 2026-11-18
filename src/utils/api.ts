@@ -1,11 +1,15 @@
 export const CHANNEL_ID = 'UCFW399C6JkpIkSnUQ0LYJ_Q';
-export const DEFAULT_API_KEY = 'AIzaSyChjTCnutg0bvqODaAM9u3009ixCIsJTBA';
+const API_KEY = 'AIzaSyChjTCnutg0bvqODaAM9u3009ixCIsJTBA';
 
 export interface ChannelInfo {
   title: string;
   subscriberCount: string;
   videoCount: string;
   viewCount: string;
+  description: string;
+  thumbnail: string;
+  banner: string;
+  publishedAt: string;
 }
 
 export interface VideoItem {
@@ -13,13 +17,17 @@ export interface VideoItem {
   snippet: {
     title: string;
     publishedAt: string;
+    description: string;
     thumbnails: {
       maxres?: { url: string };
       high?: { url: string };
       medium?: { url: string };
+      default?: { url: string };
     };
   };
   _views?: number;
+  _likes?: number;
+  _comments?: number;
 }
 
 export interface VideoStats {
@@ -30,19 +38,9 @@ export interface VideoStats {
   };
 }
 
-export function getApiKey(): string {
-  return localStorage.getItem('yt_api_key') || DEFAULT_API_KEY;
-}
-
-export function setApiKey(key: string): void {
-  localStorage.setItem('yt_api_key', key);
-}
-
 export async function apiCall(endpoint: string, params: Record<string, string>): Promise<any> {
-  const key = getApiKey();
-  if (!key) throw new Error('NO_KEY');
   const url = new URL(`https://www.googleapis.com/youtube/v3/${endpoint}`);
-  url.searchParams.set('key', key);
+  url.searchParams.set('key', API_KEY);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   const res = await fetch(url);
   if (!res.ok) {
@@ -54,7 +52,7 @@ export async function apiCall(endpoint: string, params: Record<string, string>):
 
 export async function fetchChannelInfo(): Promise<ChannelInfo> {
   const data = await apiCall('channels', {
-    part: 'snippet,statistics',
+    part: 'snippet,statistics,brandingSettings',
     id: CHANNEL_ID,
   });
   if (!data.items || data.items.length === 0) throw new Error('Channel not found');
@@ -64,6 +62,10 @@ export async function fetchChannelInfo(): Promise<ChannelInfo> {
     subscriberCount: ch.statistics.subscriberCount,
     videoCount: ch.statistics.videoCount,
     viewCount: ch.statistics.viewCount,
+    description: ch.snippet.description || '',
+    thumbnail: ch.snippet.thumbnails?.high?.url || ch.snippet.thumbnails?.default?.url || '',
+    banner: ch.brandingSettings?.image?.bannerExternalUrl || '',
+    publishedAt: ch.snippet.publishedAt,
   };
 }
 
